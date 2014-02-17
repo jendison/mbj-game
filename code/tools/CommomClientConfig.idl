@@ -1,0 +1,29 @@
+// CommomClientConfig.idl : type library source for CommomClientConfig.exe
+
+// This file will be processed by the MIDL compiler to produce the
+// type library (CommomClientConfig.tlb).
+
+[ uuid(194E5838-C748-45CB-9BDA-62123118F171), version(1.0) ]
+library CommomClientConfig
+{
+	importlib("stdole32.tlb");
+	importlib("stdole2.tlb");
+
+	//  Primary dispatch interface for CCommomClientConfigDoc
+	
+	[ uuid(B8116DF4-67E8-49CB-B084-D2615BC48FF9) ]
+	dispinterface ICommomClientConfig
+	{
+		properties:
+			
+		methods:
+	};
+
+	//  Class information for CCommomClientConfigDoc
+	
+	[ uuid(28E9DF9D-E7FB-4B14-943F-CE3FD243DCBC) ]
+	coclass CommomClientConfig
+	{
+		[default] dispinterface ICommomClientConfig;
+	};
+};
