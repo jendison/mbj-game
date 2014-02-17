@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LocalDebuggerWorkingDirectory>D:\works\dt\工具\物体工具</LocalDebuggerWorkingDirectory>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerEnvironment>path=%path%;D:\works\dt\code\tools\commonconfig\svn-win32-1.8.5\bin</LocalDebuggerEnvironment>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerWorkingDirectory>D:\works\dt\工具\物体工具</LocalDebuggerWorkingDirectory>
+    <LocalDebuggerEnvironment>path=%path%;D:\works\dt\code\tools\commonconfig\svn-win32-1.8.5\bin</LocalDebuggerEnvironment>
+  </PropertyGroup>
+</Project>
