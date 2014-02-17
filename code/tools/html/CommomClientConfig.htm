@@ -1,0 +1,1166 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>  
+	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta charset="UTF-8" />  
+
+    <title>编辑器</title>  
+    <link rel="stylesheet" type="text/css" href="./jui/themes/default/easyui.css">  
+    <link rel="stylesheet" type="text/css" href="./jui/themes/icon.css">  
+    <link rel="stylesheet" type="text/css" href="./css/demo.css">  
+	<script type="text/javascript" src="js/FileUnit.js"></script>
+	<script type="text/javascript" src="js/json2.js"></script>
+	<script type="text/javascript" src="jui/jquery-1.6.1.min.js"></script>
+	<script type="text/javascript" src="jui/plugins/jquery.json-2.4.js"></script>
+    <script type="text/javascript" src="jui/easyloader.js"></script>
+    <script type="text/javascript" src="jui/jquery.easyui.min.js"></script>  
+</head>  
+<body onkeydown="enterkey()">  
+	<form>
+	 工程路径:<input type='text' id='proj' style="width:800px" value="D:\works\sl\trunk\策划\game-project.js"/>
+	<input type='file' id='fileBrowDig' style="width:10px; visibility:hidden" />
+        <a href="javascript:browsFile()">浏览</a>
+	 <input type='button' value="open" onclick='onProjectOpen()'/>
+	</for>
+	
+	<div id="cc" class="easyui-layout" style="width:1300px;height:640px;" >   
+		<div data-options="region:'west',split:true" style="width:200px;">
+		<ul id="tree" class="easyui-tree" data-options="animate:true,lines:true"></ul>  	
+		</div>  
+		<div data-options="region:'center'" style="padding:5px;background:#eee;">		
+			<div id="tab" class="easyui-tabs" data-options="tools:'#tab-tools'">  </div> 
+		</div>  
+		
+        <div id="tab-tools">
+            <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true,iconCls:'icon-saveall'" onclick="saveAll()"></a>
+             <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true,iconCls:'icon-remove'" onclick="removePanel()"></a>
+        </div>
+   </div>  
+
+<div id="addobject" class="easyui-menu" style="width:120px;">
+	<div onclick="contextCmd('svn &update')" data-options="iconCls:'icon-svn-update'">svn 更新</div>
+	<div onclick="contextCmd('svn &commit')" data-options="iconCls:'icon-svn-commit'">svn 提交</div>
+	<div onclick="NewTemplate()" data-options="iconCls:'icon-add'">添加物体</div>
+	<div onclick="exportCSV()" data-options="iconCls:'icon-excel'">导出为csv</div>
+    <div onclick="importCSV()" data-options="iconCls:'icon-excel'">导入为csv</div>
+</div>
+
+<div id="deleteobject" class="easyui-menu" style="width:120px;">
+	<div onclick="contextCmd('svn &update')"data-options="iconCls:'icon-svn-update'">svn 更新</div>
+	<div onclick="contextCmd('svn &commit')" data-options="iconCls:'icon-svn-commit'">svn 提交</div>
+	<div onclick="deleteobject()" data-options="iconCls:'icon-remove'">删除</div>
+</div>
+<div id="win"></div> 
+
+
+	<script type="text/javascript">  
+	    var browser = navigator.appName
+	    var b_version = navigator.appVersion
+	    var version = parseFloat(b_version)
+
+	    document.write("Browser name: " + browser)
+	    document.write("<br />")
+	    document.write("Browser version: " + b_version)
+
+	    $(function () { 
+	    try
+	    {
+	        var f = new File("defaultpaht.js", "r");
+	        f.open()
+	        f.seekg(0)
+	        var str =  f.readAll()
+	        f.close()
+	        $("#proj").val(str)
+	    }
+	    catch(e)
+	    {
+
+	    }
+	})
+	
+
+	
+function removePanel() {
+
+	var tab = $('#tab').tabs('getSelected');
+	if (tab) {
+	    var index = $('#tab').tabs('getTabIndex', tab);
+	    $('#tab').tabs('close', index);
+	}
+}
+
+	function LoadScript(path){
+	    //加载ProjConfig
+		var e = document.createElement("script")
+		e.src=path
+		document.body.appendChild(e)
+	}
+
+	function genRows(fieldRowNode, templateJson ) {
+	    var childRow = []
+	    var typeField = fieldRowNode.type
+	    var editor = { type: "text" }
+
+	    if (typeField.name == "enum") {
+	        var enumName = typeField.index;
+	        //先从common里找
+	        var enumJson = window.editor.CommonTemplate["enum"][enumName]
+	        if (typeof (enumJson) == 'undefined') {
+	            enumJson = templateJson["enum"][enumName]
+	        }
+
+	        if (typeof (enumJson) == 'undefined') {
+	            alert(enumName + "未定义")
+	        }
+
+	        var ops = []
+	        for (var k = 0; k < enumJson.length; ++k) {
+	            ops.push({ "value": enumJson[k].value, "name": enumJson[k].name })
+	        }
+
+	        editor = {
+	            "type": "combobox",
+	            "options": {
+	                valueField: 'value',
+	                textField: 'name',
+	                data: ops
+	            }
+	        }
+	    }
+	    else if (typeField.name == "object") {
+	        var objDir = typeField.index;
+	        editor = {
+	            "type": "objectselect",
+	            "options": {
+	                "objectdir": objDir
+	            }
+	        }
+	    }
+	    else if (typeField.name == "unit") {
+	        var unitName = typeField.index
+	        //先从common里找
+	        var unitJson = window.editor.CommonTemplate["unit"][unitName]
+	        if (typeof (unitJson) == 'undefined') {
+	            unitJson = templateJson["unit"][unitName]
+	        }
+
+	        for (var e in unitJson) {
+	            unitJson[e]['key'] = e;
+	            var ret = genRows(unitJson[e], templateJson)
+	            childRow.push(ret);
+	        }
+
+
+	        editor = {
+	            "type": "text",
+	            "options": {
+	                "unit": objDir
+	            }
+	        }
+
+	    }
+		else if (typeField.name == "union"){
+			 var unionName = typeField.index
+			    //先从common里找
+	        var unionJson = window.editor.CommonTemplate["unit"][unitName]
+			if (typeof (unionJson) == 'undefined') {
+	            unionJson = templateJson["union"][unionName]
+	        }
+			
+			var depentFiled = unionJson["depent"];
+			var fields = unionJson["field"]
+			for(var bField = 0; bField < fields.length; ++bField){
+				var ret = genRows(fields[bField], templateJson)
+				childRow.push(ret)
+			}
+		}
+		
+	    var typeName = typeField.name;
+
+	    window.editor.curRowID++;
+	    return {
+	        id: fieldRowNode.key + window.editor.curRowID,
+	        key: fieldRowNode.key,
+	        name: '<span class = "easyui-tooltip" title="' + fieldRowNode.comment + '">' + fieldRowNode.name + '</span>',
+	        value: fieldRowNode.type.init,
+	        type: typeName,
+	        field: fieldRowNode,    //模板对应字段
+	        editor: editor,
+	        multi: typeField.multi,
+	        children: childRow
+	    };
+	}
+
+	//新建标签页
+	function addTab(title, tbid, templateName, objPath, sn) {
+	    var tbstr = '<table id="' + tbid + '"></table>'
+
+	    var saveFunction = function () {
+	        //保存操作
+	        var tg = $('#' + tbid)
+	        tg.treegrid("endEdit", window.editor.curEditorRowID)
+	        tg.treegrid("acceptChanges")
+	        var saveJson = { "base": { "template": templateName } }
+	        var fields = {}
+	        var griddata = tg.treegrid("getRoots")
+	        function savedata(obj, result) {
+
+	            if (obj.multi) {
+	                var a = []
+	                for (var i = 0; i < obj.children.length; ++i) {
+	                    var tmp = {}
+	                    savedata(obj.children[i], tmp)
+	                    a.push(tmp[obj.key])
+	                }
+	                result[obj.key] = a
+	            }
+	            else {
+	                //unit
+	                if (obj.field.type.name == "unit") {
+
+	                    var tmp = {}
+	                    for (var i = 0; i < obj.children.length; ++i) {	                                
+	                        savedata(obj.children[i], tmp)
+	                    }
+	                    result[obj.key] = tmp
+	                }
+	                else {
+	                    result[obj.key] = obj.value
+	                }
+	            }
+
+	        }
+
+	        for (var i = 0; i < griddata.length; ++i) {
+	            savedata(griddata[i], fields)
+	        }
+	        saveJson["fields"] = fields;
+
+	        var f = new File(objPath, "w");
+	        var str = JSON.stringify(saveJson, null, '\t');
+
+	        f.open()
+	        f.seekg(0)
+	        f.write(str);
+	        f.close()
+
+	        var save = newTab.find(".tabs-title");
+	        save.each(function (k, v) {
+	            if ($(v).html() == title) {
+	                $(v).css("color", 'black')
+	            }
+	        })
+	    }
+
+	    //添加tab
+	   var newTab = $('#tab').tabs('add', {
+	        title: title,
+	        content: tbstr,
+	        closable: true,
+	        tools: [{
+	            iconCls: 'icon-save',
+	            handler: saveFunction
+	        }]
+
+	    });
+
+	    //读取物体对应的模板
+	    var templateFilePath = ProjConfig.template_dir + templateName + ".js";
+	    var ftemp = new File(templateFilePath, "r")
+	    ftemp.open()
+	    var tmpStr = ftemp.readAll();
+	    ftemp.close()
+		
+		//把对应模版转变为json
+	    var templateJson = $.parseJSON(tmpStr)
+	    var data = templateJson.fields
+	    var rows = [];
+
+		//分析模版
+	    for (var i = 0; i < data.length; ++i) {
+	        var row = genRows(data[i], templateJson);	//根据模板信息 生成一行
+	        if (row.multi) {
+	            row.children = []
+	            row.name += " 列表"
+                row.type += " 列表"
+	        }
+			
+			if (row.key == "sn"){
+				row.value = sn
+			}
+			
+	        rows.push(row)
+	    } //for
+
+		//双击操作， 添加一行， 进队列表项目管用
+	    var onDbClickRow = function (row) {
+
+	        var jtbid = $(this)
+	        row.templateJson = templateJson;
+
+	        if (window.editor.curEditorRowID != row.id) {
+	            jtbid.treegrid("endEdit", window.editor.curEditorRowID)
+	        }
+
+	        var rowidTmp = row.id
+	        if (row.multi) {
+	            window.editor.curRowID++;
+	            rowidTmp = row.key + window.editor.curRowID
+
+	            var node = jtbid.treegrid('getSelected');
+	            var data = genRows(node.field, templateJson)
+	            data.multi = false		
+	            data.type = data.field.type.name
+				data.name += "<span style='color:red'> (" + (node.children.length + 1) + ")</span>"
+				
+	            jtbid.treegrid('append', {
+	                parent: node.id,
+	                data: [data]
+	            })
+	        }
+
+	        if (row.field.type.name == "unit") {
+	            return;
+	        }
+
+	        window.editor.curEditor = row.editor
+	        jtbid.treegrid("beginEdit", rowidTmp)
+	        window.editor.curEditorRowID = rowidTmp;
+			window.editor.curTreeGrid = jtbid;
+	    }
+		
+		//单击人一行， 释放编辑
+	    var onClickRow = function (row) {
+	        var jtbid = $(this)
+	        row.templateJson = templateJson;
+	        jtbid.treegrid("endEdit", window.editor.curEditorRowID)
+	        window.editor.curEditorRowID = row.id
+	        window.editor.curTreeGrid = jtbid;
+	    }
+
+	    $('#' + tbid).treegrid({
+	        idField: 'id',
+	        treeField: 'name',
+	        width:900,
+            height:600,
+	        onAfterEdit: function (row, changes) {
+	            if (changes.value) {
+	                var save = newTab.find(".tabs-title");
+	                save.each(function (k, v) {
+	                    if ($(v).html() == title) {
+	                        $(v).css("color", 'red')
+	                    }
+	                })
+	            }
+
+	        },
+	        onDblClickRow: onDbClickRow,
+	        onClickRow: onClickRow,
+	        onContextMenu: function (e, row) {
+	            e.preventDefault();
+	           var tg = $(this)
+	            var node = tg.treegrid('getSelected');
+	            if (node) {
+	                $.messager.confirm('Confirm', '确定删除 <span style="color:red">' + node.name + '</span> ?', function (r) {
+	                    if (r) {
+	                        tg.treegrid('remove', node.id);
+	                    }
+	                });
+	             
+	            }
+
+	        },
+	        columns: [[
+                { title: 'key', field: 'name', width: 300 },
+                { title: 'type', field: 'type', width: 120 },
+                { title: 'value', field: 'value', width: 440, editor: "commonEditor", formatter:commonFormat }
+	        ]],
+	        data: {
+	            "total": rows.length, "rows": rows
+	        }
+	    });//treegrid
+	    newTab.saveFunc = saveFunction
+	    return newTab;
+	}
+
+	function onProjectOpen() {	
+		window.editor = {}
+	    window.editor.curEditorRowID = ""
+	    window.editor.curRowID = 100000;
+
+		var proj = $("#proj").val()
+		if (proj == ""){
+			$.messager.alert('警告','路径不能为空');  
+			return false;
+		}
+
+	    //加载ProjConfig
+		LoadScript(proj)
+		
+		//等待配置加载完成
+		setTimeout(function () {
+		    //保存文件
+		    var f = new File("defaultpaht.js", "w");
+		    f.open()
+		    f.seekg(0)
+		    f.write(proj);
+		    f.close()
+
+			projectOpen();
+		}, 0);
+		
+	}
+
+	//打开工程
+	function  projectOpen() {
+		//加载模版-通用
+		var f = new File(ProjConfig.template_dir + "common.js", "r");
+		f.open();
+		var commnJsStr = f.readAll() 
+		f.close();
+		window.editor.CommonTemplate = $.parseJSON(commnJsStr);
+			
+		//遍历目录
+		var ret = GetAllInDir(ProjConfig.project_dir)
+		var treeMenu = $.parseJSON(ret);		
+		$('#tree').tree({
+		    data: treeMenu,
+		    onContextMenu: function (e, node) {
+		        e.preventDefault();
+		        // select the node
+		        $('#tree').tree('select', node.target);
+		        // display context menu
+		        //不是叶子节点
+		        if ($('#tree').tree("isLeaf", node.target)) {
+		            $('#deleteobject').menu('show', {
+		                left: e.pageX,
+		                top: e.pageY
+		            });
+		            return;
+		        }
+
+		        $('#addobject').menu('show', {
+		            left: e.pageX,
+		            top: e.pageY
+		        });
+		    },
+		    onClick: function (node) {
+		        var jtbid = window.editor.curTreeGrid;
+                if (jtbid)
+                    jtbid.treegrid("endEdit", window.editor.curEditorRowID)
+
+				//不是叶子节点
+				if(!$('#tree').tree("isLeaf",  node.target)){
+				    return;
+				}
+				
+				if ( $('#tab').tabs("exists", node.text)){
+					$('#tab').tabs('select', node.text);
+				}
+				else
+				{
+					try 
+					{
+						//根据树节点获得物体
+				        var filePath = node.attributes.path;
+						var file = new File(filePath, "r");
+						file.open();
+						var obj = file.readAll();
+						file.close();				  
+						var objdata = eval("("+obj+")");
+		
+				     //表单id
+						var tbid = "pg_" + node.id;
+						
+						addTab(node.text, tbid, objdata.base.template, filePath);
+
+					    //读取物体对应的模板
+						var templateFilePath = ProjConfig.template_dir + objdata.base.template + ".js";
+						var ftemp = new File(templateFilePath, "r")
+						ftemp.open()
+						var tmpStr = ftemp.readAll();
+						ftemp.close()
+						var tg = $("#" + tbid);
+
+						var templateJson = $.parseJSON(tmpStr)
+						templateJson["treegrid"] = tg;
+
+						function setRowValue(row, objval, templateJson) {
+						    var typeField = row.field.type
+						    if (row.multi) {
+						        var children = row.children;    //应该是空的。。
+						        var childrendata = objval  //   这个是数组
+
+						        if (typeof (childrendata) != "object") { return; }
+
+						        for (var i = 0; i < childrendata.length; ++i) {
+						            
+						            var rowRet = genRows(row.field, templateJson);
+						            rowRet.multi = false;   //子项了
+									rowRet.name += "<span style='color:blue'> (" + (i + 1) + ")</span>";
+						            setRowValue(rowRet, childrendata[i], templateJson);
+						            children.push(rowRet);
+						        }
+						        return;
+						    }
+
+
+						    if (typeField.name == "unit") {
+						        var children = row.children;
+						        var childrendata = objval
+						        for (var ii = 0; ii < children.length; ++ii) {
+						            var childrenKey = children[ii].key
+						            if (objval) {
+						                children[ii].value = objval[childrenKey]
+						                children[ii].templateJson = templateJson
+						            }
+						        }
+						    }
+						    else {
+						        row.value = objval;
+						        row.templateJson = templateJson
+						    }
+						}
+
+
+						
+						var datas = tg.treegrid("getData");
+					    //赋值
+						for (var i = 0; i < datas.length; ++i) {
+						    var row = datas[i];					  
+						    setRowValue(row, objdata.fields[row.key], templateJson)						   
+						}
+						tg.treegrid("loadData", datas);
+
+					}//try
+					catch(e)
+					{
+						alert("+"+e.stack)
+					}
+				}
+		
+			}
+
+		});
+	
+		$('#tab').tabs({
+					onBeforeClose: function(title,index){
+					var tab = $(this).tabs("getTab", index)
+					var tg = tab.find("table[id^=pg]")
+
+					if (window.editor.curTreeGrid && tg.attr("id") == window.editor.curTreeGrid.attr("id")) {
+					    window.editor.curTreeGrid = null
+					}
+
+					if (tg.length == 0) return true;
+
+					var rows = tg.treegrid('getChanges')
+					if (rows == 0) return true;
+					
+					var target = this;
+					$.messager.confirm('未保存', title + '<span style="color:red">未保存</span>,你是否要关闭? ', function(r){
+					if (r){
+						var opts = $(target).tabs('options');
+						var bc = opts.onBeforeClose;
+						opts.onBeforeClose = function(){};  // allowed to close now
+							$(target).tabs('close',index);
+							opts.onBeforeClose = bc;  // restore the event function
+						}
+					});
+					return false;	// prevent from closing
+					}
+		})	
+	}
+
+	function getCurNodeRoot(tree, node) {
+	   var ret = node;
+	   var n = tree.tree("getParent", node.target);
+	    while (n) {
+	       ret = n;
+	       n = tree.tree("getParent", n.target);	      
+	   }
+
+	    return ret;
+	}
+
+
+//新建一个物体
+function NewTemplate() {
+    //不是叶子节点
+   var tree = $('#tree')
+    var node = tree.tree("getSelected")
+    if (tree.tree("isLeaf", node.target)) {
+        return;
+    }
+
+   
+   var root = getCurNodeRoot(tree, node);
+
+   if (root == null) return;
+
+    $.messager.prompt('新建物体', '文件名:', function (title) {
+        if (title) {
+            var path = node.attributes.path +"\\" + title + ".js"
+            var templateName = root.text
+			
+			var snfile = root.attributes.path.substr(0, root.attributes.path.lastIndexOf('\\')) +"\\_info\\" + templateName + ".js"
+
+			try {
+				var f = new File(snfile, "r");
+				f.open()
+				var snStrs = f.readAll()
+				f.close();
+			}
+			catch(e){
+				  $.messager.alert('Warning', snfile + " ,被<span style='color:red'>锁定</span>, 请先!"+
+				  "<a href='javascript:svngetlock(\"" + snfile.replace(/\\/g,"\\\\") + "\")'>解锁</a>"
+				  );
+				return;
+			}
+			
+			var snJson = $.parseJSON(snStrs);
+			
+			//新加一个标签页
+           var tab = addTab(title, "new_" + title, templateName, path, snJson.next_sn)
+            tree.tree("append", {
+                parent: node.target,
+                data: [{ id: title, text: title, attributes: { path: path } }]
+            });
+
+            if (tab && tab.saveFunc) {
+                tab.saveFunc();
+            }
+			
+		    snJson.next_sn += 1;
+		  var f = new File(snfile, "w");
+			f.open()
+			f.seekg(0)
+			f.write($.toJSON(snJson));
+			f.close()
+        }
+    });
+
+}
+
+function contextCmd(cmd){
+   var tree = $('#tree')
+    var node = tree.tree("getSelected")
+	if (node == null) return;
+	
+	var path = node.attributes.path
+	if (!exeContentCmd(path, cmd)){
+		$.messager.alert('哎.怎么说你呢!', 
+		'骚年你的机器似乎未安装<span style="color:red"> tortoissvn</span>,请<a href="http://tortoisesvn.net/downloads.html">下载</a>,安装成功之后重新打开编辑器!');
+	}
+}
+
+function svngetlock(path){
+	if (!exeContentCmd(path, "svn get loc&k")){
+		$.messager.alert('哎.怎么说你呢!', 
+		'骚年你的机器似乎未安装<span style="color:red"> tortoissvn</span>,请<a href="http://tortoisesvn.net/downloads.html">下载</a>,安装成功之后重新打开编辑器!');
+	}
+}
+	
+$.extend($.fn.datagrid.defaults.editors, {
+    objectselect: {  //选择物品的编辑框
+        init: function (container, options) {
+           
+            var input = $('<input type="text" >').appendTo(container);
+            var objectdir = options.objectdir
+
+            var dir = ProjConfig.project_dir + objectdir + "\\";
+            var ret = GetAllInDir(dir)
+            var tree = $.parseJSON(ret);
+            data = tree;
+            input.combotree({
+                required: false,
+                data: data
+            });
+
+            return input;
+        },
+        getValue: function (target) {
+            return target.combotree('getValue');
+        },
+        setValue: function (target, value) {
+            $(target).val(value);
+        },
+        resize: function (target, width) {
+            var input = $(target);
+            if ($.boxModel == true) {
+                input.width(width - (input.outerWidth() - input.width()));
+            } else {
+                input.width(width);
+            }
+        }
+    }
+});
+
+
+$.extend($.fn.datagrid.defaults.editors, {
+    commonEditor: {  //默认编辑框
+        init: function (container, options) {
+            var editor = window.editor.curEditor
+            var input = $('<input type="text" >').appendTo(container);
+
+            if (editor.type == "text") {
+				setTimeout(function(){
+					input.select();
+				}, 0)
+				
+            }
+            else if (editor.type == "numberbox") {
+                input.numberbox({
+                    required: false,
+                    value: 0
+                });
+            }
+            else if (editor.type == "combobox") {
+                input.combobox(editor.options)
+            }
+            else if (editor.type == "objectselect") {
+                var objectdir = editor.options.objectdir
+
+                var dir = ProjConfig.project_dir + objectdir + "\\";
+                var ret = GetAllInDir(dir)
+                var tree = $.parseJSON(ret);
+                data = tree;
+                input.css("width", "400px");
+               var com = input.combotree({
+                   required: false,
+                    data: data
+               });
+                com.css("width", "400px")
+            }
+            else {
+
+            }
+            return input;
+        },
+        getValue: function (target) {
+            var editor = window.editor.curEditor
+            if (editor.type == "combobox" ) {
+                return target.combobox('getValue');
+            }
+            else if (editor.type == "objectselect") {
+                return target.combotree('getValue');
+            }
+             return $(target).val(); 
+        },
+        setValue: function (target, value) {
+            var editor = window.editor.curEditor
+            if (editor.type == "combobox") {
+                target.combobox('setValue', value  );
+            }
+            else if (editor.type == "objectselect") {
+                target.combotree('setValue', value);
+            }
+            else {
+                $(target).val(value);
+            }
+        },
+        resize: function (target, width) {
+            var input = $(target);
+            if ($.boxModel == true) {
+                input.width(width - (input.outerWidth() - input.width()));
+            } else {
+                input.width(width);
+            }
+        }
+    }
+});
+
+function deleteobject() {
+    var tree = $('#tree')
+    var node = tree.tree("getSelected")
+    if (!tree.tree("isLeaf", node.target)) {
+        return;
+    }
+    var path = node.attributes.path
+    $.messager.alert('Warning', '文件路径:'+path+",请手工删除并提交!");
+
+}
+
+function commonFormat(val, row) {
+    if (typeof (val) == 'undefined') return;
+
+    var typeName = row.field.type.name;
+    if (typeName == "enum") {
+        var enumVal = window.editor.CommonTemplate['enum'][row.field.type.index]
+	    
+        if (typeof (enumVal) == 'undefined') {
+            enumVal = row.templateJson['enum'][row.field.type.index]
+        }
+		
+        if (typeof (enumVal) == 'undefined') {
+            return val
+        }
+
+        //枚举不一定是从０开始的
+        for (var i = 0; i < enumVal.length; ++i) {
+            if (enumVal[i].value == val) {
+                var valName = enumVal[i].name
+                return valName + " (<span style='color:red'>" + val + "</span>)"
+            }
+        }
+    }
+/*
+    var tg = row.templateJson.treegrid;
+    var fields = tg.treegrid("getData")
+    for (var i = 0; i < fields.length; ++i) {
+        var field = fields[i]
+        if (field.type == "union" && field.field.index == row.key) {
+            var id = field.id;
+            tg.remove(id)
+
+        }
+
+    }
+*/
+	return val;
+}
+
+
+function IsSave(){
+	return confirm("确定关闭?");
+}
+
+function selectNextRow(jtbid, allNode, id) {
+    for (var i = 0; i < allNode.length; ++i) {
+        var node = allNode[i];
+        if (node.id == id) {
+            var index = i + 1;
+            if (index >= allNode.length) {
+                return allNode[0]
+            }
+            
+           var next =  allNode[index]
+            /* if (next.type == "unit" || next.multi) {
+               return selectNextRow(jtbid, allNode, next.id)
+            }
+            */
+           return next;
+        }
+    }
+}
+
+function getAllNodes(datas, vt)
+{
+    for (var i = 0; i < datas.length; ++i) {
+        var node = datas[i];
+        vt.push(node)
+
+        var children = node.children;
+        getAllNodes(children, vt)
+    }
+}
+
+//按键处理
+function enterkey() {
+	if (typeof(window.editor) == 'undefined') return;
+	e = window.event.keyCode;
+	if (e == 13) //回车
+	{
+	    window.event.preventDefault()
+
+		var jtbid = window.editor.curTreeGrid;	
+		jtbid.treegrid("endEdit", window.editor.curEditorRowID)
+		event.returnValue= true; // 取消此事件的默认操作 
+	}
+	else if (e == 9) {//tab
+	    window.event.preventDefault()
+
+	    if (window.editor.tab) { return; }
+
+	    event.returnValue = true; // 取消此事件的默认操作 
+		var jtbid = window.editor.curTreeGrid;	
+		jtbid.treegrid("endEdit", window.editor.curEditorRowID)
+
+		var datas = jtbid.treegrid("getData");
+
+		var allNodes = []
+        getAllNodes(datas, allNodes)
+
+        var nextRow = selectNextRow(jtbid, allNodes, window.editor.curEditorRowID)
+
+		jtbid.treegrid("select", nextRow.id);
+		window.editor.curEditorRowID = nextRow.id;
+		window.editor.curEditor = nextRow.editor
+		if (nextRow.type == "unit" || nextRow.multi) {
+		}
+		else {
+		    jtbid.treegrid("beginEdit", nextRow.id)
+		}
+
+		window.editor.tab = true;
+
+		setTimeout(function () {
+		    window.editor.tab = false;
+		}, 100)
+	}
+
+	return true;
+}
+
+function saveAll()
+{
+    var allTab = $(".icon-save");
+    allTab.each(function (k, v) {
+        v.click();
+    })
+}
+
+function browsFile() {
+    $("#fileBrowDig").click();
+    $("#proj").val($("#fileBrowDig").val());
+}
+
+function json2CSV(k, v, tab)
+{
+    if (typeof (v.length) != 'undefined' && typeof(v) != 'string') {
+        var arryName = k;
+        for (var i = 0; i < v.length; ++i) {
+            var name = arryName + "[|" + i +"*|";
+            json2CSV(name, v[i], tab)
+        }
+    }
+    else if(typeof(v) == "object")
+    {
+        for (var e in v) {
+            json2CSV(k +"]|"+ e, v[e], tab)
+        }
+    }
+    else {
+        tab.n += 1;
+        tab.data[k] = v;
+    }
+}
+
+function exportCSV(){
+	$("#fileBrowDig").click();	
+	var path = $("#fileBrowDig").val();	 
+	var tree = $('#tree')
+    var node = tree.tree("getSelected")
+	if (node == null) return;	
+	var paths = tree.tree("getData", node.target).children;
+
+	var s = ""
+	var csvTable = []
+
+	for (var i = 0; i < paths.length; ++i) {
+	    var fileName = paths[i].attributes.path;
+	    var f = new File(fileName, "r");
+	    f.open()
+	    f.seekg(0)
+	    var jsonStr = f.readAll();
+	    f.close()
+	    var json = JSON.parse(jsonStr);
+	    var fiels = json.fields;
+	    var tab = { n: 0, data: {}}
+	    for (var e in fiels) {
+	        json2CSV(e, fiels[e], tab);
+	    }
+        csvTable.push(tab)
+	}
+
+	var head = {n:0}
+	for (var i = 0; i < csvTable.length; ++i) {
+	    var row = csvTable[i];
+	    if (row.n > head.n) {
+	        head = row;
+	    }
+	}
+
+	var ret = "";
+	for (var k in head.data) {
+	    ret += k + ";\t";
+	}
+	ret += "\n"
+
+	for (var i = 0; i < csvTable.length; ++i) {
+        var data = csvTable[i].data
+        for (var k in head.data) {
+            var val = data[k];
+            if (!val) { val = ""}
+            ret += val + ";\t"
+	    }
+	    ret += "\n"
+	}
+
+	path = path + ".csv"
+	var f = new File(path, "w");
+	f.open()
+	f.seekg(0)
+	f.write(ret);
+	f.close()
+	$.messager.alert('info', "导出完成！路径:<span style='color:red'>"+path+"</span>");
+}
+
+
+function importCSV()
+{
+    //不是叶子节点
+    var tree = $('#tree')
+    var node = tree.tree("getSelected")
+    if (tree.tree("isLeaf", node.target)) {
+        return;
+    }
+    var root = getCurNodeRoot(tree, node);
+
+    if (root == null) return;
+	
+    $("#fileBrowDig").click();
+    var file = $("#fileBrowDig").val();
+    if (file == "") {
+        $.messager.alert('警告', '路径不能为空');
+        return;
+    }
+
+    //读取csv文件
+    var f = new File(file, "r");
+    f.open()
+    f.seekg(0)
+    var jsonStr = f.readAll();
+    f.close()
+
+    jsonStr = jsonStr.replace(/\t/g, "")
+    jsonStr = jsonStr.replace(/\"/g, "")
+    jsonStr = jsonStr.replace(/,/g, ";")
+	jsonStr = jsonStr.replace(/\r/g, "")
+    //转化为json
+    var files = csv2Json(jsonStr);
+
+    var paths = tree.tree("getData", node.target).children;
+    var errs = []
+    for (var i = 0; i < paths.length; ++i) {
+        var fileName = paths[i].attributes.path;
+        var f = new File(fileName, "r");
+        f.open()
+        f.seekg(0)
+        var jsonStr = f.readAll();
+        f.close()
+        var json = JSON.parse(jsonStr);
+        var oldFields = json.fields;
+        var sn = oldFields.sn;
+
+        if (!files[sn]) {
+            continue;
+        }
+
+        json.fields = files[sn]
+        files[sn] = null
+        //保存文件
+        var f = new File(fileName, "w");
+        var str = JSON.stringify(json, null, '\t');
+        f.open()
+        f.seekg(0)
+        f.write(str);
+        f.close()
+    }
+
+    var err = ""
+    for (var e in files) {
+        if (files[e]) {
+            err += e + ", "
+        }
+    }
+    if (err != "") {
+        var strError = "sn:" + err + "<span>导入失败</span>"
+        $.messager.alert("错误", strError)
+    }
+    else {
+        $.messager.alert("成功", "导入成功")
+    }
+}
+
+function csv2Json(csvStr) {
+    var index =  csvStr.indexOf("\n")
+    var head = csvStr.substring(0, index);
+    var fields = head.split(";");
+    if (fields[0] != "sn") {
+        throw "格式无效";
+    }
+
+    var newIndex = csvStr.indexOf("\n", index + 1);
+    var files = {}
+    while (newIndex != -1) {
+        var row = csvStr.substring(index + 1, newIndex);
+        var values = row.split(";")
+        var obj = {} //数据原型
+        for (var i = 0; i < values.length; ++i) {
+            genField(fields[i], obj, values[i])
+        }
+        files[obj.sn] = obj
+        index = newIndex;
+        newIndex = csvStr.indexOf("\n", index + 1);
+    }
+
+    return files;
+}
+
+//生成字段
+function genField(field, obj, val)
+{
+    if (field == "\r" || field == "" || val == "" || val == "\r") {
+            return;
+        }
+        var index = field.indexOf("|");
+
+        //普通数据
+        if (index == -1) {
+            obj[field] = val
+            return;
+        }
+
+        var char = field.charAt(index - 1);
+        var objName = field.substring(0, index - 1)
+
+        if (char == "[") {
+            if (!obj[objName]) {
+                obj[objName] = [];
+            }
+
+            //获取索引
+            var numberIndex = field.indexOf("|", index + 1);
+            if (numberIndex == -1) {
+                throw "错误数据"
+            }
+
+            char = field.charAt(numberIndex - 1);
+            if (char != "*") {
+                throw "错误数据"
+            }
+
+            var number = field.substring(index + 1, numberIndex - 1)
+
+            //获取数据类型
+            var dataIndex = field.indexOf("|", numberIndex + 1)
+            if (dataIndex == -1) {
+                obj[objName].push(val)
+                return;
+            }
+            
+            char = field.charAt(dataIndex - 1);
+            if (char == "]") {
+                if (!obj[objName][number]) {
+                    obj[objName].push({})
+                }
+
+                genField(field.substr(dataIndex + 1), obj[objName][number], val)
+            }
+
+        }
+        else if (char == "]") {
+            if (!obj[objName]) {
+                obj[objName] = {}
+            }
+            genField(field.substr(index + 1), obj[objName], val)
+        }
+        else {
+            throw "bug!!!!"
+        }
+
+}
+    </script>
+</BODY>
+</HTML>
