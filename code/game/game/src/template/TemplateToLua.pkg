@@ -1,0 +1,16 @@
+$#include "TypeDefine.h"
+$#include "TemplateScene.h"
+
+typedef  char	int8t;
+typedef	 short	int16t;
+typedef	 int	int32t;
+typedef  unsigned char uint8t;
+typedef	 unsigned short	uint16t;
+typedef	 unsigned int	uint32t;
+
+$//注意 仅导出需要的函数即可。
+
+class TemplateScene
+{
+	int32t getNextscene() const{ return m_nextScene;}
+};
