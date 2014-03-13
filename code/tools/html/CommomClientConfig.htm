@@ -281,8 +281,9 @@ function removePanel() {
 	        var row = genRows(data[i], templateJson);	//根据模板信息 生成一行
 	        if (row.multi) {
 	            row.children = []
-	            row.name += " 列表"
-                row.type += " 列表"
+				var d = " <a style='color:green' title='双击可新建' href='#'>数组</a>"
+	            row.name += d;
+                row.type += d;
 	        }
 			
 			if (row.key == "sn"){
@@ -490,7 +491,11 @@ function removePanel() {
 						    if (row.multi) {
 						        var children = row.children;    //应该是空的。。
 						        var childrendata = objval  //   这个是数组
-
+								if (row.type.search('数组') == -1) {
+									var d = " <a style='color:green' title='双击可新建' href='#'>数组</a>"
+									row.name += d;
+									row.type += d;
+								}
 						        if (typeof (childrendata) != "object") { return; }
 
 						        for (var i = 0; i < childrendata.length; ++i) {
@@ -511,8 +516,7 @@ function removePanel() {
 						        for (var ii = 0; ii < children.length; ++ii) {
 						            var childrenKey = children[ii].key
 						            if (objval) {
-						                children[ii].value = objval[childrenKey]
-						                children[ii].templateJson = templateJson
+										setRowValue(children[ii], objval[childrenKey], templateJson)
 						            }
 						        }
 						    }
